@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniEmbed & Multi-Browser Hub</title>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-accent: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-color: #38bdf8;
+            --accent-hover: #0ea5e9;
+            --border-color: #475569;
+            --danger: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Sidebar Styling */
+        #sidebar {
+            width: 320px;
+            background-color: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            z-index: 10;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-body {
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-main);
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--accent-color);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--accent-color);
+            color: var(--bg-primary);
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .btn-preset {
+            background-color: var(--bg-accent);
+            color: var(--text-main);
+            padding: 8px;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .btn-preset:hover {
+            border-color: var(--accent-color);
+            background-color: rgba(56, 189, 248, 0.1);
+        }
+
+        /* Workspace Grid & Main Layout */
+        #main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            position: relative;
+        }
+
+        #top-navbar {
+            height: 60px;
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        /* Built-in Browser Bar */
+        .browser-bar {
+            display: flex;
+            align-items: center;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 4px 12px;
+            width: 50%;
+            max-width: 600px;
+        }
+
+        .browser-bar input {
+            border: none;
+            padding: 4px 8px;
+            background: transparent;
+            flex: 1;
+            font-size: 0.85rem;
+        }
+
+        .browser-bar-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0 6px;
+            font-size: 0.9rem;
+        }
+
+        .browser-bar-btn:hover {
+            color: var(--accent-color);
+        }
+
+        #workspace {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+            gap: 20px;
+            align-content: start;
+        }
+
+        /* Card Styling for Embeds */
+        .embed-card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 400px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .embed-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            background-color: var(--bg-accent);
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .card-title-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .card-badge {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background-color: var(--bg-primary);
+            color: var(--accent-color);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .card-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-overflow: ellipsis;
+            overflow: hidden;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .card-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+        }
+
+        .card-btn:hover {
+            color: var(--text-main);
+        }
+
+        .card-btn.delete:hover {
+            color: var(--danger);
+        }
+
+        .card-body {
+            flex: 1;
+            background-color: #fff;
+            position: relative;
+        }
+
+        .card-body iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background-color: #fff;
+        }
+
+        /* Fallback Alert if iframe is blocked */
+        .iframe-fallback {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            text-align: center;
+            z-index: 2;
+        }
+
+        .fallback-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            color: var(--text-muted);
+        }
+
+        .fallback-text {
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            color: var(--text-muted);
+        }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.4;
+        }
+
+        .info-note {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 10px;
+            line-height: 1.4;
+            background-color: rgba(255,255,255,0.03);
+            padding: 8px;
+            border-radius: 4px;
+            border-left: 2px solid var(--accent-color);
+        }
+
+        @media(max-width: 768px) {
+            body { flex-direction: column; }
+            #sidebar { width: 100%; height: auto; }
+            #workspace { grid-template-columns: 1fr; }
+            .browser-bar { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h1>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                OmniEmbed Hub
+            </h1>
+        </div>
+        
+        <div class="panel-body">
+            <form id="embed-form">
+                <div class="form-group">
+                    <label for="embed-title">Title / Name</label>
+                    <input type="text" id="embed-title" placeholder="e.g., Dashboard, Video Player" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="embed-type">Source Type</label>
+                    <select id="embed-type" onchange="toggleInputType()">
+                        <option value="url">Web URL (HTTP/HTTPS)</option>
+                        <option value="code">Raw HTML / Direct Embed Code</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="url-group">
+                    <label for="embed-url">Target URL</label>
+                    <input type="url" id="embed-url" placeholder="https://example.com" required>
+                </div>
+
+                <div class="form-group" id="code-group" style="display: none;">
+                    <label for="embed-code">HTML / Iframe Code</label>
+                    <textarea id="embed-code" rows="5" placeholder="<iframe src='...'></iframe> or generic HTML"></textarea>
+                </div>
+
+                <button type="submit" class="btn">Inject Embed Frame</button>
+            </form>
+
+            <div style="margin-top: 25px;">
+                <label>Instant Sandbox Presets</label>
+                <div class="preset-grid">
+                    <div class="btn-preset" onclick="addPreset('Wikipedia', 'https://en.m.wikipedia.org')">📋 Wikipedia</div>
+                    <div class="btn-preset" onclick="addPreset('Hacker News', 'https://news.ycombinator.com')">🧡 HackerNews</div>
+                    <div class="btn-preset" onclick="addPreset('Internet Archive', 'https://archive.org')">🏛️ Archive.org</div>
+                    <div class="btn-preset" onclick="addPreset('OpenStreetMap', 'https://www.openstreetmap.org/export/embed.html?bbox=-0.0040%2C51.4774%2C0.0040%2C51.4784&layer=mapnik')">🗺️ OpenStreetMaps</div>
+                </div>
+            </div>
+
+            <div class="info-note">
+                <strong>💡 Note:</strong> Major sites (like Google or YouTube standard links) block themselves from loading inside standard frames using security headers (`X-Frame-Options`). Use their provided <em>Embed codes</em> instead!
+            </div>
+        </div>
+    </div>
+
+    <div id="main-content">
+        <div id="top-navbar">
+            <div style="font-weight: 500; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                <span id="active-count" class="card-badge">0 Frame(s) Loaded</span>
+            </div>
+
+            <div class="browser-bar">
+                <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 4px;">🌐 Go to:</span>
+                <input type="text" id="browser-url" placeholder="Enter URL (e.g., google.com) or paste HTML code..." onkeydown="if(event.key === 'Enter') launchBrowserInstance()">
+                <button class="browser-bar-btn" onclick="launchBrowserInstance()" title="Launch Custom Instance">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
+            </div>
+
+            <button class="btn" style="width: auto; padding: 6px 14px; background-color: var(--bg-accent); color: var(--text-main);" onclick="clearAllEmbeds()">Clear Canvas</button>
+        </div>
+
+        <div id="workspace">
+            <div class="empty-state" id="empty-state">
+                <div class="empty-state-icon">🎛️</div>
+                <h3>Your Workbench is Empty</h3>
+                <p style="font-size: 0.9rem; margin-top: 8px;">Use the side panel controls or the built-in browser bar above to deploy apps and embed widgets side-by-side.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let embedCount = 0;
+
+        function toggleInputType() {
+            const type = document.getElementById('embed-type').value;
+            const urlGroup = document.getElementById('url-group');
+            const codeGroup = document.getElementById('code-group');
+            const urlInput = document.getElementById('embed-url');
+            const codeInput = document.getElementById('embed-code');
+
+            if (type === 'url') {
+                urlGroup.style.display = 'block';
+                codeGroup.style.display = 'none';
+                urlInput.required = true;
+                codeInput.required = false;
+            } else {
+                urlGroup.style.display = 'none';
+                codeGroup.style.display = 'block';
+                urlInput.required = false;
+                codeInput.required = true;
+            }
+        }
+
+        document.getElementById('embed-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const title = document.getElementById('embed-title').value;
+            const type = document.getElementById('embed-type').value;
+            
+            if (type === 'url') {
+                const url = document.getElementById('embed-url').value;
+                createEmbedCard(title, 'url', url);
+            } else {
+                const code = document.getElementById('embed-code').value;
+                createEmbedCard(title, 'code', code);
+            }
+
+            document.getElementById('embed-title').value = '';
+            document.getElementById('embed-url').value = '';
+            document.getElementById('embed-code').value = '';
+        });
+
+        function addPreset(name, url) {
+            createEmbedCard(name, 'url', url);
+        }
+
+        // Browser Address Bar Engine
+        function launchBrowserInstance() {
+            const barInput = document.getElementById('browser-url');
+            let inputVal = barInput.value.trim();
+            if (!inputVal) return;
+
+            // Detect if input is raw HTML or a URL string
+            if (inputVal.startsWith('<') && inputVal.endsWith('>')) {
+                createEmbedCard('Code Instance', 'code', inputVal);
+            } else {
+                if (!/^https?:\/\//i.test(inputVal)) {
+                    inputVal = 'https://' + inputVal;
+                }
+                try {
+                    const parsedUrl = new URL(inputVal);
+                    createEmbedCard(parsedUrl.hostname || 'Web Instance', 'url', inputVal);
+                } catch(e) {
+                    createEmbedCard('Web Instance', 'url', inputVal);
+                }
+            }
+            barInput.value = '';
+        }
+
+        // Framework Core for generating card layers dynamically
+        function createEmbedCard(title, type, content) {
+            const emptyState = document.getElementById('empty-state');
+            if (emptyState) emptyState.style.display = 'none';
+
+            embedCount++;
+            updateActiveCounter();
+
+            const cardId = `embed-frame-${embedCount}`;
+            const workspace = document.getElementById('workspace');
+
+            const card = document.createElement('div');
+            card.className = 'embed-card';
+            card.id = cardId;
+
+            const badgeText = type === 'url' ? 'Link' : 'Code';
+            const encodedContent = encodeURIComponent(content);
+
+            card.innerHTML = `
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <span class="card-badge">${badgeText}</span>
+                        <span class="card-title" title="${title}">${title}</span>
+                    </div>
+                    <div class="card-actions">
+                        <button class="card-btn" onclick="refreshFrame('${cardId}', '${type}', \`${encodedContent}\`)" title="Reload Frame">🔄</button>
+                        <button class="card-btn" onclick="popOutWindow('${type}', \`${encodedContent}\`)" title="Open in new tab">↗️</button>
+                        <button class="card-btn delete" onclick="deleteFrame('${cardId}')" title="Remove Frame">❌</button>
+                    </div>
+                </div>
+                <div class="card-body"></div>
+            `;
+
+            workspace.appendChild(card);
+            renderFrameContents(card.querySelector('.card-body'), type, content);
+        }
+
+        function renderFrameContents(container, type, content) {
+            container.innerHTML = ''; 
+
+            const iframe = document.createElement('iframe');
+            // Safe flexible sandboxing permissions
+            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups');
+            iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+            iframe.setAttribute('allowfullscreen', 'true');
+
+            if (type === 'url') {
+                iframe.src = content;
+            } else {
+                iframe.srcdoc = content;
+            }
+
+            container.appendChild(iframe);
+        }
+
+        function deleteFrame(id) {
+            const frame = document.getElementById(id);
+            if (frame) {
+                frame.remove();
+                updateActiveCounter();
+            }
+            
+            const workspace = document.getElementById('workspace');
+            if (workspace.children.length === 1 && workspace.children[0].id === 'empty-state') {
+                document.getElementById('empty-state').style.display = 'block';
+            }
+        }
+
+        function refreshFrame(id, type, encodedContent) {
+            const card = document.getElementById(id);
+            if (!card) return;
+            renderFrameContents(card.querySelector('.card-body'), type, decodeURIComponent(encodedContent));
+        }
+
+        function popOutWindow(type, encodedContent) {
+            const content = decodeURIComponent(encodedContent);
+            if (type === 'url') {
+                window.open(content, '_blank');
+            } else {
+                const newWin = window.open();
+                if(newWin) newWin.document.write(content);
+            }
+        }
+
+        function clearAllEmbeds() {
+            const workspace = document.getElementById('workspace');
+            const emptyState = document.getElementById('empty-state');
+            workspace.innerHTML = '';
+            workspace.appendChild(emptyState);
+            emptyState.style.display = 'block';
+            updateActiveCounter();
+        }
+
+        function updateActiveCounter() {
+            const workspace = document.getElementById('workspace');
+            let total = workspace.children.length;
+            if (document.getElementById('empty-state').style.display !== 'none') {
+                total--;
+            }
+            document.getElementById('active-count').innerText = `${total} Frame(s) Loaded`;
+        }
+    </script>
+</body>
+</html>
